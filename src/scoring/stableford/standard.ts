@@ -16,8 +16,10 @@ const resolveSlopeAndCourseRating = (scorecard: Scorecard): { slope: number, cr:
         } else {
             throw new Error(`Cannot resolve slope and course rating for ${scorecard.course.name} with scores for ${scorecard.strokes.length} holes and starting on hole ${scorecard.startingHole}`)
         }
+    } else if (scorecard.strokes.length === 12 && scorecard.course.holes.length === 12) {
+        return { slope: tee.ratings.men.full.slope, cr: tee.ratings.men.full.cr }
     } else {
-        throw new Error(`Cannot resolve slope and course rating for ${scorecard.course.name} with strokes for ${scorecard.strokes.length} holes`)
+        throw new Error(`Cannot resolve slope and course rating for ${scorecard.course.name} with strokes for ${scorecard.strokes.length} holes when the course has ${scorecard.course.holes.length} holes [standard logic]`)
     }
 }
 
@@ -29,23 +31,31 @@ const resolveSlopeAndCourseRating = (scorecard: Scorecard): { slope: number, cr:
  * @returns Playing handicap (always a whole number)
  */
 export const resolvePlayingHandicap = (scorecard: Scorecard): { phcp: number, slope: number, cr: number } => {
-    const { slope, cr } = resolveSlopeAndCourseRating(scorecard)
+    let { slope, cr } = resolveSlopeAndCourseRating(scorecard)
 
     const coursePar = scorecard.course.holes.reduce((acc, hole) => acc + hole.par, 0)
 
-    if (scorecard.course.holes.length === 18) {
-        // same as "gamebook" implementation
+    if (scorecard.course.holes.length === 18 && (scorecard.strokes.length === 18 || scorecard.strokes.length === 9)) {
         return { slope, cr, phcp: playingHandicap(scorecard.hcp, slope, cr, coursePar) }
     }
+
     if (scorecard.course.holes.length === 9) {
         if (scorecard.strokes.length === 9) {
-            // same as "gamebook" implementation
             return { slope, cr, phcp: playingHandicap(scorecard.hcp/2, slope, cr, coursePar) }
         } else if (scorecard.strokes.length === 18) {
             return { slope, cr, phcp: playingHandicap(scorecard.hcp, slope, cr * 2, coursePar * 2) }
         }
     }
-    throw new Error(`Cannot resolve playing handicap for ${scorecard.course.name} with ${scorecard.strokes.length} strokes and ${scorecard.course.holes.length} holes [standard logic]`)
+
+    if (scorecard.course.holes.length === 12 && scorecard.strokes.length === 12) {
+        if (Math.abs(cr - coursePar) > 10) {
+            console.warn(`${scorecard.course.name} has CR ${cr} and PAR ${coursePar} (${Math.abs(cr - coursePar)} difference) - this may be a 12-hole course with 18-hole ratings!?`)
+            cr *= 12/18
+        }
+        return { slope, cr, phcp: playingHandicap(scorecard.hcp * (12/18), slope, cr, coursePar) }
+    }
+
+    throw new Error(`Cannot resolve playing handicap for ${scorecard.course.name} with scores for ${scorecard.strokes.length} holes on a course with ${scorecard.course.holes.length} holes [standard logic]`)
 
     // If the scorecard has strokes for just 9 holes, we'll halve the player's handicap index
     // accordingly before calculating their course handicap.

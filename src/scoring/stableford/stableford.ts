@@ -1,16 +1,17 @@
-import { DateTime } from "luxon"
 import { Scorecard } from "../../types"
 import { full18From } from "../../utils/course"
+import { cloneScorecard } from "../../utils/scorecard"
 import { StablefordScore, CalculateStablefordOptions } from "./types"
 import { resolvePlayingHandicap as resolvePlayingHandicapWithStandardRules } from "./standard"
 import { resolvePlayingHandicap as resolvePlayingHandicapWithGamebookRules } from "./gamebook"
 
 const DEBUG_ENABLED = false
-const DEBUG_HCP: number|undefined = 15.8
-const DEBUG_STROKES: number|undefined = 44
-const DEBUG_TEE: string|undefined = '46'
+const DEBUG_HCP: number|undefined = 14
+const DEBUG_STROKES: number|undefined = undefined
+const DEBUG_TEE: string|undefined = 'green'
 const DEBUG_METHOD: 'gamebook'|'standard'|undefined = 'gamebook'
 
+/* istanbul ignore next */
 const isDebug = (scorecard: Scorecard, options: CalculateStablefordOptions): boolean => {
     if (DEBUG_ENABLED) {
         if (DEBUG_STROKES) {
@@ -28,24 +29,6 @@ const isDebug = (scorecard: Scorecard, options: CalculateStablefordOptions): boo
         }
     }
     return DEBUG_ENABLED
-}
-
-const cloneScorecard = (scorecard: Scorecard): Scorecard => {
-    const dateserializer = (_key: string, value: any): any => {
-        if (value.toISOString) {
-            return '###DateISOString###' + (value as Date).toISOString()
-        } else {
-            return value
-        }
-    }
-    const datereviver = (_key: string, value: any): any => {
-        if (typeof value === 'string' && value.startsWith('###DateISOString###')) {
-            return new Date(value.substring('###DateISOString###'.length))
-        } else {
-            return value
-        }
-    }
-    return JSON.parse(JSON.stringify(scorecard, dateserializer), datereviver) as Scorecard
 }
 
 const defaultStablefordOptions: CalculateStablefordOptions = {
@@ -98,26 +81,39 @@ export const calculateStableford = (scorecard: Scorecard, options: CalculateStab
 const prepareScorecard = (scorecard: Scorecard, options: CalculateStablefordOptions): Scorecard => {
     const DEBUG = isDebug(scorecard, options)
     if (DEBUG) console.log(`Starting to prepare scorecard's course:\n${JSON.stringify(scorecard.course, null, 2)}`)
+
     // If the scorecard suggests the player has played more holes than the course has, we'll
     // extrapolate the full 18-hole course from the 9-hole course by simply repeating it twice.
     if (scorecard.course.holes.length < scorecard.strokes.length) {
         if (scorecard.course.holes.length === 9 && scorecard.strokes.length === 18) {
             scorecard.course = full18From(scorecard.course)
         } else {
-            throw new Error(`Course ${scorecard.course.name} has only ${scorecard.course.holes.length} holes, but ${scorecard.strokes.length} strokes were recorded!`)
+            throw new Error(`${scorecard.course.name} has only ${scorecard.course.holes.length} holes, but strokes were recorded for ${scorecard.strokes.length} holes!`)
         }
     }
 
     if (options.method !== 'gamebook') {
-        if (scorecard.course.holes.length < 18) {
-            const maxHcpBefore = Math.max(...scorecard.course.holes.map(h => h.hcp))
-            if (maxHcpBefore > 9) {
+        if (scorecard.course.holes.length === 9) {
+            const maxHcp = Math.max(...scorecard.course.holes.map(h => h.hcp))
+            if (maxHcp > 9) {
                 if (scorecard.course.holes.find(h => h.hcp === 2)) {
                     scorecard.course.holes = scorecard.course.holes.map(h => ({ ...h, hcp: Math.round(h.hcp / 2) }))
                 } else {
                     scorecard.course.holes = scorecard.course.holes.map(h => ({ ...h, hcp: Math.round((h.hcp + 1) / 2) }))
                 }
             }
+        }
+    }
+    if (scorecard.course.holes.length === 12) {
+        const maxHcp = Math.max(...scorecard.course.holes.map(h => h.hcp))
+        if (maxHcp > 12) {
+            // The course's HCP ratings are "sparse" meaning there are gaps in the HCP values
+            // and some of them are missing. We'll adjust the HCP values to be relative to each
+            // other, so that the lowest HCP value is 1 and the highest is 12.
+            scorecard.course.holes = scorecard.course.holes.map(hole => {
+                let relativeHcp = scorecard.course.holes.filter(h => h.hcp <= hole.hcp).length
+                return { ...hole, hcp: relativeHcp }
+            })
         }
     }
 
@@ -129,7 +125,7 @@ const calculateStablefordScore = (scorecard: Scorecard, options: CalculateStable
     const DEBUG = isDebug(scorecard, options)
     const DEBUG_MSGS: string[] = []
 
-    if (DEBUG) DEBUG_MSGS.push(`Scorecard for ${scorecard.course.name} on ${JSON.stringify(scorecard.date)} ${DateTime.fromJSDate(scorecard.date).toISODate()}:\n${JSON.stringify(scorecard, null, 2)}`);
+    if (DEBUG) DEBUG_MSGS.push(`Scorecard for ${scorecard.course.name} on ${JSON.stringify(scorecard.date)} ${scorecard.date}:\n${JSON.stringify(scorecard, null, 2)}`);
 
     const playedHoles = scorecard.course.holes.slice(scorecard.startingHole - 1, scorecard.startingHole - 1 + scorecard.strokes.length)
     const coursePar = playedHoles.reduce((acc, hole) => acc + hole.par, 0)
@@ -140,11 +136,11 @@ const calculateStablefordScore = (scorecard: Scorecard, options: CalculateStable
         const constantAdjustment = Math.floor(phcp / scorecard.course.holes.length)
         const remainingStrokes = Math.floor(phcp - (scorecard.course.holes.length * constantAdjustment))
         const variableAdjustment = remainingStrokes >= hole.hcp ? 1 : 0
-        if (DEBUG) DEBUG_MSGS.push(`Hole #${hole.hole} stroke allocation: ${constantAdjustment} + ${variableAdjustment} = ${constantAdjustment + variableAdjustment} strokes`)
+        if (DEBUG) DEBUG_MSGS.push(`Hole #${hole.hole}\tHCP ${hole.hcp}\tstroke allocation: ${constantAdjustment} + ${variableAdjustment} = ${constantAdjustment + variableAdjustment} strokes`)
         return hole.par + constantAdjustment + variableAdjustment
     })
 
-    if (DEBUG) DEBUG_MSGS.push(`Stableford points for ${scorecard.course.name} (${scorecard.tee}) on ${DateTime.fromJSDate(scorecard.date).toISODate()} with playing handicap ${phcp}:`)
+    if (DEBUG) DEBUG_MSGS.push(`Stableford points for ${scorecard.course.name} (${scorecard.tee}) on ${scorecard.date} with playing handicap ${phcp}:`)
     const strokes = scorecard.strokes.reduce((acc, s) => acc + s, 0)
     const [points, effectivePlayingHandicap] = calculatePointsAndEffectivePlayingHandicap(scorecard, adjustedPars, DEBUG, DEBUG_MSGS)
 
@@ -163,7 +159,7 @@ const calculatePointsAndEffectivePlayingHandicap = (scorecard: Scorecard, adjust
         const adjustedParIndicator = adjustmentSymbol.repeat(Math.abs(strokesAllocated))
         const differenceToPar = 2 + adjustedPar - strokes
         const stablefordPoints = Math.max(0, differenceToPar)
-        if (DEBUG) DEBUG_MSGS.push(`#${i+1}:  hcp=${scorecard.course.holes[i].hcp}\tpar=${scorecard.course.holes[i].par}${adjustedParIndicator}\t=> ${adjustedPar}\tstrokes=${strokes}\tpts=${stablefordPoints}`)
+        if (DEBUG) DEBUG_MSGS.push(`#${(i+1).toString().padEnd(2)}\thcp=${scorecard.course.holes[i].hcp.toString().padEnd(2)}\tpar=${scorecard.course.holes[i].par}${adjustedParIndicator}\t=> ${adjustedPar}\tstrokes=${strokes}\tpts=${stablefordPoints}`)
         return stablefordPoints
     }).reduce((acc, p) => acc + p, 0);
     return [points, effectivePlayingHandicap]

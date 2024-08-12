@@ -29,10 +29,17 @@ export type Course = {
     holes: Array<HoleRating>,
 };
 
+
+type AnyDigit = '0'|'1'|'2'|'3'|'4'|'5'|'6'|'7'|'8'|'9';
+type DateStringYear = `20${AnyDigit}${AnyDigit}`;
+type DateStringMonth = '01'|'02'|'03'|'04'|'05'|'06'|'07'|'08'|'09'|'10'|'11'|'12';
+type DateStringDay = '01'|'02'|'03'|'04'|'05'|'06'|'07'|'08'|'09'|'10'|'11'|'12'|'13'|'14'|'15'|'16'|'17'|'18'|'19'|'20'|'21'|'22'|'23'|'24'|'25'|'26'|'27'|'28'|'29'|'30'|'31'
+type DateString = `${DateStringYear}-${DateStringMonth}-${DateStringDay}`;
+
 export type Scorecard = {
     course: Course,
     tee: string,
-    date: Date,
+    date: DateString,
     hcp: number,
     startingHole: number,
     strokes: Array<number>,
