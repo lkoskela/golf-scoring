@@ -49,6 +49,10 @@ describe('Playing Handicap', () => {
                 it('54.0 HCP playing Golf Talma Par-3 course from the reds has a course handicap of 32', () => {
                     expect(playingHandicap(54.0, slRed, crRed, 54)).toBe(32)
                 })
+
+                it('54.0 HCP playing Golf Talma Par-3 course from the reds has a course handicap of 23 when handicap allowance is set at 75%', () => {
+                    expect(playingHandicap(54.0 * 0.75, slRed, crRed, 54)).toBe(23)
+                })
             })
         })
 

@@ -43,35 +43,36 @@ export const applyHandicapStrokeAllocation = (scorecard: Scorecard, options: Cal
  * @param scorecard Scorecard
  * @returns Playing handicap (always a whole number)
  */
-export const resolvePlayingHandicap = (scorecard: Scorecard): { phcp: number, slope: number, cr: number } => {
+export const resolvePlayingHandicap = (scorecard: Scorecard, options: CalculateStablefordOptions): { phcp: number, slope: number, cr: number } => {
     let { slope, cr } = resolveSlopeAndCourseRating(scorecard)
     const tee = routing(scorecard)
 
+    const hcpAllowance = options.hcpAllowance || 1
     const playedHoles = tee.holes.slice(scorecard.startingHole - 1, scorecard.startingHole - 1 + scorecard.strokes.length)
     const wholeCoursePar = tee.holes.reduce((acc, hole) => acc + hole.par, 0)
     const playedCoursePar = playedHoles.reduce((acc, hole) => acc + hole.par, 0)
 
     if (tee.holes.length === 18) {
         if (scorecard.strokes.length === tee.holes.length) {
-            const phcp = playingHandicap(scorecard.hcp, slope, cr, wholeCoursePar)
-            if (phcp < 0) console.warn(`B playingHandicap(${scorecard.hcp}, ${slope}, ${cr}, ${wholeCoursePar}) => negative playing handicap (${phcp}) - ${scorecard.strokes.length}/${tee.holes.length} holes played, starting on ${scorecard.startingHole}. CR=${cr}. SLOPE=${slope}. Course par is ${wholeCoursePar}. Played holes' par is ${playedCoursePar}. [Gamebook logic]`)
+            const phcp = playingHandicap(scorecard.hcp * hcpAllowance, slope, cr, wholeCoursePar)
+            if (phcp < 0) console.warn(`B playingHandicap(${scorecard.hcp * hcpAllowance}, ${slope}, ${cr}, ${wholeCoursePar}) => negative playing handicap (${phcp}) - ${scorecard.strokes.length}/${tee.holes.length} holes played, starting on ${scorecard.startingHole}. CR=${cr}. SLOPE=${slope}. Course par is ${wholeCoursePar}. Played holes' par is ${playedCoursePar}. [Gamebook logic]`)
             return { phcp, slope, cr }
         } else if (scorecard.strokes.length === 9) {
-            const phcp = playingHandicap(scorecard.hcp, slope, cr, wholeCoursePar)
-            if (phcp < 0) console.warn(`A playingHandicap(${scorecard.hcp}, ${slope}, ${cr}, ${wholeCoursePar}) => negative playing handicap (${phcp}) - ${scorecard.strokes.length}/${tee.holes.length} holes played, starting on ${scorecard.startingHole}. CR=${cr}. SLOPE=${slope}. Course par is ${wholeCoursePar}. Played holes' par is ${playedCoursePar}. [Gamebook logic] Scorecard:\n${JSON.stringify(scorecard, null, 2)}`)
+            const phcp = playingHandicap(scorecard.hcp * hcpAllowance, slope, cr, wholeCoursePar)
+            if (phcp < 0) console.warn(`A playingHandicap(${scorecard.hcp * hcpAllowance}, ${slope}, ${cr}, ${wholeCoursePar}) => negative playing handicap (${phcp}) - ${scorecard.strokes.length}/${tee.holes.length} holes played, starting on ${scorecard.startingHole}. CR=${cr}. SLOPE=${slope}. Course par is ${wholeCoursePar}. Played holes' par is ${playedCoursePar}. [Gamebook logic] Scorecard:\n${JSON.stringify(scorecard, null, 2)}`)
             return { phcp, slope, cr }
         }
     }
 
     if (tee.holes.length === 9) {
         if (scorecard.strokes.length === tee.holes.length) {
-            const phcp = playingHandicap(scorecard.hcp/2, slope, cr, wholeCoursePar)
-            if (phcp < 0) console.warn(`C playingHandicap(${scorecard.hcp/2}, ${slope}, ${cr}, ${wholeCoursePar}) => negative playing handicap (${phcp}) - ${scorecard.strokes.length}/${tee.holes.length} holes played, starting on ${scorecard.startingHole}. CR=${cr}. SLOPE=${slope}. Course par is ${wholeCoursePar}. Played holes' par is ${playedCoursePar}. [Gamebook logic]`)
+            const phcp = playingHandicap(scorecard.hcp * hcpAllowance/2, slope, cr, wholeCoursePar)
+            if (phcp < 0) console.warn(`C playingHandicap(${scorecard.hcp * hcpAllowance/2}, ${slope}, ${cr}, ${wholeCoursePar}) => negative playing handicap (${phcp}) - ${scorecard.strokes.length}/${tee.holes.length} holes played, starting on ${scorecard.startingHole}. CR=${cr}. SLOPE=${slope}. Course par is ${wholeCoursePar}. Played holes' par is ${playedCoursePar}. [Gamebook logic]`)
             return { phcp, slope, cr }
         } else /* istanbul ignore next */ if (scorecard.strokes.length === tee.holes.length * 2) {
             console.warn(`Execution should never reach here – the course for a scorecard should've been expanded to 18 holes before this point!`)
-            const phcp = playingHandicap(scorecard.hcp, slope, cr * 2, wholeCoursePar * 2)
-            if (phcp < 0) console.warn(`D playingHandicap(${scorecard.hcp}, ${slope}, ${cr * 2}, ${wholeCoursePar * 2}) => negative playing handicap (${phcp}) - ${scorecard.strokes.length}/${tee.holes.length} holes played, starting on ${scorecard.startingHole}. CR=${cr}. SLOPE=${slope}. Course par is ${wholeCoursePar}. Played holes' par is ${playedCoursePar}. [Gamebook logic]`)
+            const phcp = playingHandicap(scorecard.hcp * hcpAllowance, slope, cr * 2, wholeCoursePar * 2)
+            if (phcp < 0) console.warn(`D playingHandicap(${scorecard.hcp * hcpAllowance}, ${slope}, ${cr * 2}, ${wholeCoursePar * 2}) => negative playing handicap (${phcp}) - ${scorecard.strokes.length}/${tee.holes.length} holes played, starting on ${scorecard.startingHole}. CR=${cr}. SLOPE=${slope}. Course par is ${wholeCoursePar}. Played holes' par is ${playedCoursePar}. [Gamebook logic]`)
             return { phcp, slope, cr }
         }
     }
@@ -82,7 +83,7 @@ export const resolvePlayingHandicap = (scorecard: Scorecard): { phcp: number, sl
                 console.warn(`${scorecard.course.name} has CR ${cr} and PAR ${wholeCoursePar} (${Math.abs(cr - wholeCoursePar)} difference) - this may be a 12-hole course with 18-hole ratings!?`)
                 cr = cr * (tee.holes.length/18)
             }
-            return { slope, cr, phcp: playingHandicap(scorecard.hcp * (12/18), slope, cr, wholeCoursePar) }
+            return { slope, cr, phcp: playingHandicap(scorecard.hcp * hcpAllowance * (12/18), slope, cr, wholeCoursePar) }
         }
     }
 

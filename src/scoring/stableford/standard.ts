@@ -50,22 +50,23 @@ export const applyHandicapStrokeAllocation = (scorecard: Scorecard, options: Cal
  * @param scorecard Scorecard
  * @returns Playing handicap (always a whole number)
  */
-export const resolvePlayingHandicap = (scorecard: Scorecard): { phcp: number, slope: number, cr: number } => {
+export const resolvePlayingHandicap = (scorecard: Scorecard, options: CalculateStablefordOptions): { phcp: number, slope: number, cr: number } => {
     const log = debug(scorecard, { method: 'standard' })
     let { slope, cr } = resolveSlopeAndCourseRating(scorecard)
 
+    const hcpAllowance = options.hcpAllowance || 1
     const tee = routing(scorecard)
     const coursePar = calculatePar(tee.holes)
     const parForPlayedHoles = calculatePar(tee.holes.slice(scorecard.startingHole - 1, scorecard.startingHole - 1 + scorecard.strokes.length))
 
     if (tee.holes.length === 18) {
         if (scorecard.strokes.length === 18) {
-            const phcp = playingHandicap(scorecard.hcp, slope, cr, coursePar)
+            const phcp = playingHandicap(scorecard.hcp * hcpAllowance, slope, cr, coursePar)
             log.log(`[standard:1] resolvePlayingHandicap: calculating PHCP with HCP=${scorecard.hcp}, SLOPE=${slope}, CR=${cr}, PAR=${coursePar} => PHCP=${phcp}`)
             log.flush()
             return { slope, cr, phcp }
         } else if (scorecard.strokes.length === 9) {
-            const phcp = playingHandicap(scorecard.hcp/2, slope, cr, parForPlayedHoles)
+            const phcp = playingHandicap(scorecard.hcp * hcpAllowance/2, slope, cr, parForPlayedHoles)
             log.log(`[standard:2] resolvePlayingHandicap: calculating PHCP with HCP=${scorecard.hcp}, SLOPE=${slope}, CR=${cr}, PAR=${parForPlayedHoles} => PHCP=${phcp}`)
             log.flush()
             return { slope, cr, phcp }
@@ -74,13 +75,13 @@ export const resolvePlayingHandicap = (scorecard: Scorecard): { phcp: number, sl
 
     if (tee.holes.length === 9) {
         if (scorecard.strokes.length === 9) {
-            const phcp = playingHandicap(scorecard.hcp/2, slope, cr, coursePar)
+            const phcp = playingHandicap(scorecard.hcp * hcpAllowance/2, slope, cr, coursePar)
             log.log(`[standard:3] resolvePlayingHandicap: calculating PHCP with HCP=${scorecard.hcp/2}, SLOPE=${slope}, CR=${cr}, PAR=${coursePar} => PHCP=${phcp}`)
             log.flush()
             return { slope, cr, phcp }
         } else /* istanbul ignore next */ if (scorecard.strokes.length === 18) {
             console.warn(`Execution should never reach here – the course for a scorecard should've been expanded to 18 holes before this point!`)
-            const phcp = playingHandicap(scorecard.hcp, slope, cr * 2, coursePar * 2)
+            const phcp = playingHandicap(scorecard.hcp * hcpAllowance, slope, cr * 2, coursePar * 2)
             log.log(`[standard:4] resolvePlayingHandicap: calculating PHCP with HCP=${scorecard.hcp}, SLOPE=${slope}, CR=${cr * 2}, PAR=${coursePar * 2} => PHCP=${phcp}`)
             log.flush()
             return { slope, cr, phcp }
@@ -92,7 +93,7 @@ export const resolvePlayingHandicap = (scorecard: Scorecard): { phcp: number, sl
             log.log(`[standard:5] resolvePlayingHandicap: ${scorecard.course.name} has CR ${cr} and PAR ${coursePar} (${Math.abs(cr - coursePar)} difference) - this may be a 12-hole course with 18-hole ratings!?`)
             cr *= 12/18
         }
-        const phcp = playingHandicap(scorecard.hcp * (12/18), slope, cr, coursePar)
+        const phcp = playingHandicap(scorecard.hcp * hcpAllowance * (12/18), slope, cr, coursePar)
         log.log(`[standard:6] resolvePlayingHandicap: calculating PHCP with HCP=${scorecard.hcp * (12/18)}, SLOPE=${slope}, CR=${cr}, PAR=${coursePar} => PHCP=${phcp}`)
         log.flush()
         return { slope, cr, phcp }

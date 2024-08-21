@@ -480,6 +480,36 @@ describe('Calculating Stableford points', () => {
                     expect(scoring.strokes).toBe(122)
                     expect(scoring.points).toBe(32)
                 })
+
+                it('51.9 HCP playing Tapiola Golf red (46) tees on 19.5.2024 with 75% handicap allowance using standard logic', () => {
+                    const scorecard: Scorecard = {
+                        course: tapiolaGolf,
+                        tee: '46',
+                        gender: 'male',
+                        date: "2024-05-19",
+                        hcp: 51.9,
+                        startingHole: 1,
+                        strokes: [6, 5, 8, 3, 8, 6, 9, 7, 10, 8, 7, 6, 5, 6, 7, 8, 7, 6]
+                    }
+                    const scoring = calculateStableford(scorecard, { method: 'standard', hcpAllowance: 0.75 })
+                    expect(scoring.strokes).toBe(122)
+                    expect(scoring.points).toBe(21)
+                })
+
+                it('51.9 HCP playing Tapiola Golf red (46) tees on 19.5.2024 with 75% handicap allowance using gamebook logic', () => {
+                    const scorecard: Scorecard = {
+                        course: tapiolaGolf,
+                        tee: '46',
+                        gender: 'male',
+                        date: "2024-05-19",
+                        hcp: 51.9,
+                        startingHole: 1,
+                        strokes: [6, 5, 8, 3, 8, 6, 9, 7, 10, 8, 7, 6, 5, 6, 7, 8, 7, 6]
+                    }
+                    const scoring = calculateStableford(scorecard, { method: 'gamebook', hcpAllowance: 0.75 })
+                    expect(scoring.strokes).toBe(122)
+                    expect(scoring.points).toBe(21)
+                })
             })
         })
 

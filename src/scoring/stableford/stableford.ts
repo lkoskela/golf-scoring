@@ -9,6 +9,7 @@ import { resolvePlayingHandicap as resolvePlayingHandicapWithGamebookRules, appl
 
 const defaultStablefordOptions: CalculateStablefordOptions = {
     method: 'standard',
+    hcpAllowance: 1.0,   // Default to a full 100% handicap allowance
 }
 
 /**
@@ -27,7 +28,7 @@ const defaultStablefordOptions: CalculateStablefordOptions = {
  * @returns number
  */
 const calculatePlayingHandicap = (scorecard: Scorecard, options: CalculateStablefordOptions): { phcp: number, slope: number, cr: number } => {
-    type PlayingHandicapResolutionImplementation = (scorecard: Scorecard) => { phcp: number, slope: number, cr: number }
+    type PlayingHandicapResolutionImplementation = (scorecard: Scorecard, options: CalculateStablefordOptions) => { phcp: number, slope: number, cr: number }
     const selectImplementation = (options: CalculateStablefordOptions): PlayingHandicapResolutionImplementation => {
         if (options.method === 'standard') {
             return resolvePlayingHandicapWithStandardRules
@@ -37,7 +38,7 @@ const calculatePlayingHandicap = (scorecard: Scorecard, options: CalculateStable
             throw new Error(`Unknown Stableford calculation method: ${options.method}`)
         }
     }
-    return selectImplementation(options)(scorecard)
+    return selectImplementation(options)(scorecard, options)
 }
 
 const applyHandicapStrokeAllocation = (scorecard: Scorecard, options: CalculateStablefordOptions, phcp: number, holes: Array<HoleRating>): Array<number> => {

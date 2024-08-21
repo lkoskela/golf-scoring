@@ -1,7 +1,10 @@
 import { Scorecard } from "../../types"
 
 export type CalculateStablefordOptions = {
-    method: 'standard'|'gamebook',
+    method?: 'standard'|'gamebook',
+
+    // The handicap allowance. Default is 1.0 (100%).
+    hcpAllowance?: number,
 }
 
 export type StablefordScore = {
