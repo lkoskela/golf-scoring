@@ -1,35 +1,11 @@
-import { Scorecard } from "../../types"
+import { Scorecard, HoleRating } from "../../types"
 import { full18From } from "../../utils/course"
-import { cloneScorecard } from "../../utils/scorecard"
+import { debug } from "../../utils/debug"
+import { cloneScorecard, routing } from "../../utils/scorecard"
 import { StablefordScore, CalculateStablefordOptions } from "./types"
-import { resolvePlayingHandicap as resolvePlayingHandicapWithStandardRules } from "./standard"
-import { resolvePlayingHandicap as resolvePlayingHandicapWithGamebookRules } from "./gamebook"
+import { resolvePlayingHandicap as resolvePlayingHandicapWithStandardRules, applyHandicapStrokeAllocation as applyHandicapStrokeAllocationWithStandardRules } from "./standard"
+import { resolvePlayingHandicap as resolvePlayingHandicapWithGamebookRules, applyHandicapStrokeAllocation as applyHandicapStrokeAllocationWithGamebookRules } from "./gamebook"
 
-const DEBUG_ENABLED = false
-const DEBUG_HCP: number|undefined = 14
-const DEBUG_STROKES: number|undefined = undefined
-const DEBUG_TEE: string|undefined = 'green'
-const DEBUG_METHOD: 'gamebook'|'standard'|undefined = 'gamebook'
-
-/* istanbul ignore next */
-const isDebug = (scorecard: Scorecard, options: CalculateStablefordOptions): boolean => {
-    if (DEBUG_ENABLED) {
-        if (DEBUG_STROKES) {
-            const actualStrokes = scorecard.strokes.reduce((acc, s) => acc + s, 0)
-            if (actualStrokes !== DEBUG_STROKES) return false
-        }
-        if (DEBUG_HCP && DEBUG_HCP !== scorecard.hcp) {
-            return false
-        }
-        if (DEBUG_TEE && DEBUG_TEE !== scorecard.tee) {
-            return false
-        }
-        if (DEBUG_METHOD && DEBUG_METHOD !== options.method) {
-            return false
-        }
-    }
-    return DEBUG_ENABLED
-}
 
 const defaultStablefordOptions: CalculateStablefordOptions = {
     method: 'standard',
@@ -52,8 +28,7 @@ const defaultStablefordOptions: CalculateStablefordOptions = {
  */
 const calculatePlayingHandicap = (scorecard: Scorecard, options: CalculateStablefordOptions): { phcp: number, slope: number, cr: number } => {
     type PlayingHandicapResolutionImplementation = (scorecard: Scorecard) => { phcp: number, slope: number, cr: number }
-
-    const selectPHCPImplementation = (options: CalculateStablefordOptions): PlayingHandicapResolutionImplementation => {
+    const selectImplementation = (options: CalculateStablefordOptions): PlayingHandicapResolutionImplementation => {
         if (options.method === 'standard') {
             return resolvePlayingHandicapWithStandardRules
         } else if (options.method === 'gamebook') {
@@ -62,7 +37,21 @@ const calculatePlayingHandicap = (scorecard: Scorecard, options: CalculateStable
             throw new Error(`Unknown Stableford calculation method: ${options.method}`)
         }
     }
-    return selectPHCPImplementation(options)(scorecard)
+    return selectImplementation(options)(scorecard)
+}
+
+const applyHandicapStrokeAllocation = (scorecard: Scorecard, options: CalculateStablefordOptions, phcp: number, holes: Array<HoleRating>): Array<number> => {
+    type StrokeAllocationImplementation = (scorecard: Scorecard, options: CalculateStablefordOptions, phcp: number, holes: Array<HoleRating>) => Array<number>
+    const selectImplementation = (options: CalculateStablefordOptions): StrokeAllocationImplementation => {
+        if (options.method === 'standard') {
+            return applyHandicapStrokeAllocationWithStandardRules
+        } else if (options.method === 'gamebook') {
+            return applyHandicapStrokeAllocationWithGamebookRules
+        } else {
+            throw new Error(`Unknown Stableford calculation method: ${options.method}`)
+        }
+    }
+    return selectImplementation(options)(scorecard, options, phcp, holes)
 }
 
 /**
@@ -79,88 +68,90 @@ export const calculateStableford = (scorecard: Scorecard, options: CalculateStab
 }
 
 const prepareScorecard = (scorecard: Scorecard, options: CalculateStablefordOptions): Scorecard => {
-    const DEBUG = isDebug(scorecard, options)
-    if (DEBUG) console.log(`Starting to prepare scorecard's course:\n${JSON.stringify(scorecard.course, null, 2)}`)
+    const log = debug(scorecard, options)
+    log.log(`Starting to prepare scorecard's course:\n${JSON.stringify(scorecard.course, null, 2)}`)
+
+    const tee = routing(scorecard)
+    scorecard.course.tees = [tee]  // trim irrelevant hole routings
 
     // If the scorecard suggests the player has played more holes than the course has, we'll
     // extrapolate the full 18-hole course from the 9-hole course by simply repeating it twice.
-    if (scorecard.course.holes.length < scorecard.strokes.length) {
-        if (scorecard.course.holes.length === 9 && scorecard.strokes.length === 18) {
+    if (tee.holes.length < scorecard.strokes.length) {
+        if (tee.holes.length === 9 && scorecard.strokes.length === 18) {
             scorecard.course = full18From(scorecard.course)
         } else {
-            throw new Error(`${scorecard.course.name} has only ${scorecard.course.holes.length} holes, but strokes were recorded for ${scorecard.strokes.length} holes!`)
+            throw new Error(`${scorecard.course.name} has only ${tee.holes.length} holes, but strokes were recorded for ${scorecard.strokes.length} holes!`)
         }
     }
 
     if (options.method !== 'gamebook') {
-        if (scorecard.course.holes.length === 9) {
-            const maxHcp = Math.max(...scorecard.course.holes.map(h => h.hcp))
+        if (tee.holes.length === 9) {
+            const maxHcp = Math.max(...tee.holes.map(h => h.hcp))
             if (maxHcp > 9) {
-                if (scorecard.course.holes.find(h => h.hcp === 2)) {
-                    scorecard.course.holes = scorecard.course.holes.map(h => ({ ...h, hcp: Math.round(h.hcp / 2) }))
+                if (tee.holes.find(h => h.hcp === 2)) {
+                    tee.holes = tee.holes.map(h => ({ ...h, hcp: Math.round(h.hcp / 2) }))
                 } else {
-                    scorecard.course.holes = scorecard.course.holes.map(h => ({ ...h, hcp: Math.round((h.hcp + 1) / 2) }))
+                    tee.holes = tee.holes.map(h => ({ ...h, hcp: Math.round((h.hcp + 1) / 2) }))
                 }
             }
         }
     }
-    if (scorecard.course.holes.length === 12) {
-        const maxHcp = Math.max(...scorecard.course.holes.map(h => h.hcp))
+    if (tee.holes.length === 12) {
+        const maxHcp = Math.max(...tee.holes.map(h => h.hcp))
         if (maxHcp > 12) {
             // The course's HCP ratings are "sparse" meaning there are gaps in the HCP values
             // and some of them are missing. We'll adjust the HCP values to be relative to each
             // other, so that the lowest HCP value is 1 and the highest is 12.
-            scorecard.course.holes = scorecard.course.holes.map(hole => {
-                let relativeHcp = scorecard.course.holes.filter(h => h.hcp <= hole.hcp).length
+            tee.holes = tee.holes.map(hole => {
+                let relativeHcp = tee.holes.filter(h => h.hcp <= hole.hcp).length
                 return { ...hole, hcp: relativeHcp }
             })
         }
     }
 
-    if (DEBUG) console.log(`Finished preparing scorecard's course:\n${JSON.stringify(scorecard.course, null, 2)}`)
+    log.log(`Finished preparing scorecard's course:\n${JSON.stringify(scorecard.course, null, 2)}`)
+    log.flush()
     return scorecard
 }
 
 const calculateStablefordScore = (scorecard: Scorecard, options: CalculateStablefordOptions): StablefordScore => {
-    const DEBUG = isDebug(scorecard, options)
-    const DEBUG_MSGS: string[] = []
+    const log = debug(scorecard, options)
 
-    if (DEBUG) DEBUG_MSGS.push(`Scorecard for ${scorecard.course.name} on ${JSON.stringify(scorecard.date)} ${scorecard.date}:\n${JSON.stringify(scorecard, null, 2)}`);
+    log.log(`Scorecard for ${scorecard.course.name} on ${JSON.stringify(scorecard.date)} ${scorecard.date}:\n${JSON.stringify(scorecard, null, 2)}`);
 
-    const playedHoles = scorecard.course.holes.slice(scorecard.startingHole - 1, scorecard.startingHole - 1 + scorecard.strokes.length)
+    const tee = routing(scorecard)
+    const playedHoles = tee.holes.slice(scorecard.startingHole - 1, scorecard.startingHole - 1 + scorecard.strokes.length)
     const coursePar = playedHoles.reduce((acc, hole) => acc + hole.par, 0)
+
     const { phcp, slope, cr } = calculatePlayingHandicap(scorecard, options)
-    if (DEBUG) DEBUG_MSGS.push(`Player's handicap index is ${scorecard.hcp} and course handicap for SR=${slope}, CR=${cr}, PAR=${coursePar} is ${phcp}`)
+    log.log(`Player's handicap index is ${scorecard.hcp} and course handicap for SR=${slope}, CR=${cr}, PAR=${coursePar} is ${phcp}`)
 
-    const adjustedPars = scorecard.course.holes.map(hole => {
-        const constantAdjustment = Math.floor(phcp / scorecard.course.holes.length)
-        const remainingStrokes = Math.floor(phcp - (scorecard.course.holes.length * constantAdjustment))
-        const variableAdjustment = remainingStrokes >= hole.hcp ? 1 : 0
-        if (DEBUG) DEBUG_MSGS.push(`Hole #${hole.hole}\tHCP ${hole.hcp}\tstroke allocation: ${constantAdjustment} + ${variableAdjustment} = ${constantAdjustment + variableAdjustment} strokes`)
-        return hole.par + constantAdjustment + variableAdjustment
-    })
+    const adjustedPars = applyHandicapStrokeAllocation(scorecard, options, phcp, playedHoles)
 
-    if (DEBUG) DEBUG_MSGS.push(`Stableford points for ${scorecard.course.name} (${scorecard.tee}) on ${scorecard.date} with playing handicap ${phcp}:`)
+    log.log(`Stableford points for ${scorecard.course.name} (${scorecard.tee}) on ${scorecard.date} with playing handicap ${phcp}:`)
     const strokes = scorecard.strokes.reduce((acc, s) => acc + s, 0)
-    const [points, effectivePlayingHandicap] = calculatePointsAndEffectivePlayingHandicap(scorecard, adjustedPars, DEBUG, DEBUG_MSGS)
+    const [points, effectivePlayingHandicap] = calculatePointsAndEffectivePlayingHandicap(scorecard, options, adjustedPars)
 
-    if (DEBUG) console.log(DEBUG_MSGS.join('\n'))
+    log.flush()
     return { points, strokes, phcp: effectivePlayingHandicap, scorecard }
 }
 
-const calculatePointsAndEffectivePlayingHandicap = (scorecard: Scorecard, adjustedPars: number[], DEBUG: boolean = false, DEBUG_MSGS: string[] = []): [number, number] => {
+const calculatePointsAndEffectivePlayingHandicap = (scorecard: Scorecard, options: CalculateStablefordOptions, adjustedPars: number[]): [number, number] => {
+    const log = debug(scorecard, options)
+    const tee = routing(scorecard)
     let effectivePlayingHandicap = 0
     const points = scorecard.strokes.map((strokes, index) => {
-        const i = scorecard.startingHole < scorecard.course.holes.length ? index + (scorecard.startingHole - 1) : index
-        const adjustedPar = adjustedPars[i]
-        const strokesAllocated = adjustedPar - scorecard.course.holes[i].par
+        const i = scorecard.startingHole < tee.holes.length ? index + (scorecard.startingHole - 1) : index
+        const adjustedPar = adjustedPars[index]
+        const strokesAllocated = adjustedPar - tee.holes[i].par
         effectivePlayingHandicap += strokesAllocated
         const adjustmentSymbol = strokesAllocated > 0 ? '+' : strokesAllocated < 0 ? '-' : ''
         const adjustedParIndicator = adjustmentSymbol.repeat(Math.abs(strokesAllocated))
         const differenceToPar = 2 + adjustedPar - strokes
         const stablefordPoints = Math.max(0, differenceToPar)
-        if (DEBUG) DEBUG_MSGS.push(`#${(i+1).toString().padEnd(2)}\thcp=${scorecard.course.holes[i].hcp.toString().padEnd(2)}\tpar=${scorecard.course.holes[i].par}${adjustedParIndicator}\t=> ${adjustedPar}\tstrokes=${strokes}\tpts=${stablefordPoints}`)
+        log.log(`#${(i+1).toString().padEnd(2)}\thcp=${tee.holes[i].hcp.toString().padEnd(2)}\tpar=${tee.holes[i].par}${adjustedParIndicator}\t=> ${adjustedPar}\tstrokes=${strokes}\tpts=${stablefordPoints}`)
         return stablefordPoints
     }).reduce((acc, p) => acc + p, 0);
+    log.flush()
     return [points, effectivePlayingHandicap]
 }

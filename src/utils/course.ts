@@ -1,102 +1,15 @@
 import { assert } from 'console';
-import { Course, TeeRating, HoleRating, CourseRating, FullCourseRating } from '../types';
+import { Course, HoleRating, FullCourseRating, CourseRouting } from '../types';
 
-export const frontNineFrom = (course: Course): Course => {
-    // if (course.holes.length < 18) {
-    //     throw new Error(`Can't extract a "front nine" from ${JSON.stringify(course.name)} which has ${course.holes.length} holes`);
-    // }
-    const tees: Array<TeeRating> = course.tees.map((tee: TeeRating): TeeRating => {
-        // If the course data has separate ratings for front and back nine, we'll use those.
-        if (tee.ratings.men.front) {
-            const men: FullCourseRating = { full: tee.ratings.men.front }
-            const ladies: FullCourseRating|undefined =
-                tee.ratings.ladies?.front
-                    ? { full: tee.ratings.ladies.front }
-                    : undefined
-            return { ...tee, ratings: { men, ladies } }
-        }
-        // If the course data just has a single rating for the full 18 holes, we'll
-        // split that in half and assume each nine is identical in difficulty.
-        const men: FullCourseRating = {
-            full: {
-                slope: tee.ratings.men.full.slope,
-                cr: tee.ratings.men.full.cr / 2
-            }
-        }
-        const ladies: FullCourseRating|undefined =
-            tee.ratings.ladies?.full
-                ? { full: { ...tee.ratings.ladies.full, cr: tee.ratings.ladies.full.cr / 2 } }
-                : undefined
-        return { ...tee, ratings: { men, ladies } }
-    })
-    return {
-        name: `${course.name} (Front)`,
-        tees: tees,
-        holes: course.holes.slice(0, 9),
-    }
-}
 
-export const backNineFrom = (course: Course): Course => {
-    // if (course.holes.length < 18) {
-    //     throw new Error(`Can't extract a "back nine" from ${JSON.stringify(course.name)} which has ${course.holes.length} holes`);
-    // }
-    const tees: Array<TeeRating> = course.tees.map((tee: TeeRating): TeeRating => {
-        // If the course data has separate ratings for front and back nine, we'll use those.
-        if (tee.ratings.men.back) {
-            const men: FullCourseRating = { full: tee.ratings.men.back }
-            const ladies: FullCourseRating|undefined =
-                tee.ratings.ladies?.back
-                    ? { full: tee.ratings.ladies.back }
-                    : undefined
-            return { ...tee, ratings: { men, ladies } }
-        }
-        // If the course data just has a single rating for the full 18 holes, we'll
-        // split that in half and assume each nine is identical in difficulty.
-        const men: FullCourseRating = {
-            full: {
-                slope: tee.ratings.men.full.slope,
-                cr: tee.ratings.men.full.cr / 2
-            }
-        }
-        const ladies: FullCourseRating|undefined =
-            tee.ratings.ladies?.full
-                ? { full: { ...tee.ratings.ladies.full, cr: tee.ratings.ladies.full.cr / 2 } }
-                : undefined
-        return { ...tee, ratings: { men, ladies } }
-    })
-    return {
-        name: `${course.name} (Back)`,
-        tees: tees,
-        holes: course.holes.slice(9, 18),
-    }
-}
+export const calculatePar = (holes: Array<HoleRating>): number => holes.reduce((acc, hole) => acc + hole.par, 0)
+
 
 const splitFull18CourseRating = (rating: FullCourseRating): [number, number] => {
-    const frontNineCR = Math.ceil((rating.full.cr * 10) / 2) / 10
-    const backNineCR = rating.full.cr - frontNineCR
-    assert(frontNineCR + backNineCR === rating.full.cr)
+    const frontNineCR = roundToTenth(roundToTenth(rating.full.cr) / 2)
+    const backNineCR = roundToTenth(rating.full.cr) - frontNineCR
+    assert(frontNineCR + backNineCR === rating.full.cr, `front + back = full => ${frontNineCR} + ${backNineCR} = ${rating.full.cr} = ${frontNineCR + backNineCR}`)
     return [frontNineCR, backNineCR]
-}
-
-const frontNineFromFullCourseRating = (rating: FullCourseRating): CourseRating => {
-    const [ front, _ ] = splitFull18CourseRating(rating)
-    return rating.front ? rating.front : { slope: rating.full.slope, cr: front }
-}
-
-const backNineFromFullCourseRating = (rating: FullCourseRating): CourseRating => {
-    const [ _, back ] = splitFull18CourseRating(rating)
-    return rating.back ? rating.back : { slope: rating.full.slope, cr: back }
-}
-
-const estimateMissingNineHoleRatings = (rating: FullCourseRating): FullCourseRating => {
-    return {
-        full: {
-            slope: rating.full.slope,
-            cr: rating.full.cr
-        },
-        front: frontNineFromFullCourseRating(rating),
-        back: backNineFromFullCourseRating(rating),
-    }
 }
 
 const duplicateNineHoles = (holes: Array<HoleRating>): Array<HoleRating> => {
@@ -108,6 +21,41 @@ const duplicateNineHoles = (holes: Array<HoleRating>): Array<HoleRating> => {
         return { ...hole, hole: hole.hole + 9, hcp: hole.hcp + 1 }
     });
     return frontNine.concat(backNine)
+}
+
+export const roundToTenth = (value: number): number => Math.round(value * 10) / 10
+
+const extrapolate18HoleCourseRating = (rating: FullCourseRating, par: number): FullCourseRating => {
+    if (rating.front?.cr && rating.back?.cr) {
+        // If we already have a full rating with an 18-hole CR and front/back nine ratings,
+        // we'll simply return everything as is.
+        return rating
+    } else if (rating.front?.cr) {
+        // If we only have the front nine rating, we'll calculate the back nine rating
+        // by subtracting the front nine rating from the full 18-hole rating.
+        const back = {
+            slope: rating.front.slope,
+            cr: roundToTenth(roundToTenth(rating.full.cr) - roundToTenth(rating.front.cr))
+        }
+        return { ...rating, back }
+    } else if (rating.back?.cr) {
+        // If we only have the back nine rating (VERY unusual), we'll calculate the missing
+        // front nine rating by subtracting the back nine rating from the full 18-hole rating.
+        const front = {
+            slope: rating.back.slope,
+            cr: roundToTenth(roundToTenth(rating.full.cr) - roundToTenth(rating.back.cr))
+        }
+        return { ...rating, front }
+    } else {
+        // If we're missing both front and back nine ratings, we'll allocate the full 18-hole
+        // CR evenly across both, giving the front nine the higher CR when there's a remainder.
+        const [ front, back ] = splitFull18CourseRating(rating)
+        return {
+            ...rating,
+            front: { slope: rating.full.slope, cr: front },
+            back: { slope: rating.full.slope, cr: back }
+        }
+    }
 }
 
 /**
@@ -123,23 +71,41 @@ const duplicateNineHoles = (holes: Array<HoleRating>): Array<HoleRating> => {
  * @returns A full 18-hole course definition consisting of the 9-hole course played twice.
  */
 export const full18From = (course: Course): Course => {
-    // if (course.holes.length !== 9) {
-    //     throw new Error(`Can't extend ${JSON.stringify(course.name)} which has ${course.holes.length} holes into 18 holes`);
-    // }
-    const holes = course.holes.length === 9 ? duplicateNineHoles(course.holes) : course.holes
-    const tees: Array<TeeRating> = course.tees.map(tee => {
-        return {
-            ...tee,
-            ratings: {
-                men: estimateMissingNineHoleRatings(tee.ratings.men),
-                ladies: tee.ratings.ladies ? estimateMissingNineHoleRatings(tee.ratings.ladies) : undefined,
-            }
+    const tees = cloneCourse(course).tees.map(tee => {
+        if (tee.holes.length !== 9) {
+            throw new Error(`Can't extend ${JSON.stringify(course.name)} which has ${tee.holes.length} holes into 18 holes`);
         }
+        const holes = duplicateNineHoles(tee.holes)
+        const par = tee.par * 2
+        const rating = extrapolate18HoleCourseRating(tee.rating, par)
+        return { ...tee, holes, par, rating }
     })
     return {
-        name: course.name,
+        name: `${course.name} (18)`,
         tees: tees,
-        holes: holes,
     }
+}
 
+export const cloneCourseRating = (rating: FullCourseRating): FullCourseRating => {
+    return {
+        ...rating,
+        full: { ...rating.full },
+        front: rating.front ? { ...rating.front } : undefined,
+        back: rating.back ? { ...rating.back } : undefined
+    }
+}
+
+export const cloneCourseRouting = (routing: CourseRouting): CourseRouting => {
+    return {
+        ...routing,
+        holes: routing.holes.map(h => ({ ...h })),
+        rating: cloneCourseRating(routing.rating)
+    }
+}
+
+export const cloneCourse = (course: Course): Course => {
+    return {
+        ...course,
+        tees: course.tees.map(cloneCourseRouting)
+    }
 }

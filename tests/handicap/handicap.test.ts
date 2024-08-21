@@ -7,10 +7,6 @@ describe('Playing Handicap', () => {
 
     describe('is calculated as Handicap Index x (Slope Rating/113) + (Course Rating – Par)', () => {
 
-        describe('Examples from Tapiola Golf', () => {
-
-        })
-
         /**
          * Reference:  https://support.golfgamebook.com/hc/en-us/articles/14828576432796-How-are-course-and-playing-handicaps-calculated
          */

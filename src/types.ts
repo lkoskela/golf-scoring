@@ -23,12 +23,20 @@ export type HoleRating = {
     hcp: number,
 }
 
+export type Gender = 'male'|'female';
+
+export type CourseRouting = {
+    name: string,
+    gender: Gender,
+    holes: Array<HoleRating>,
+    par: number,
+    rating: FullCourseRating,
+}
+
 export type Course = {
     name: string,
-    tees: Array<TeeRating>,
-    holes: Array<HoleRating>,
+    tees: Array<CourseRouting>,
 };
-
 
 type AnyDigit = '0'|'1'|'2'|'3'|'4'|'5'|'6'|'7'|'8'|'9';
 type DateStringYear = `20${AnyDigit}${AnyDigit}`;
@@ -37,10 +45,11 @@ type DateStringDay = '01'|'02'|'03'|'04'|'05'|'06'|'07'|'08'|'09'|'10'|'11'|'12'
 type DateString = `${DateStringYear}-${DateStringMonth}-${DateStringDay}`;
 
 export type Scorecard = {
+    date: DateString,
     course: Course,
     tee: string,
-    date: DateString,
     hcp: number,
+    gender: Gender,
     startingHole: number,
     strokes: Array<number>,
 };

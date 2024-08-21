@@ -2,7 +2,7 @@ import 'jest-extended'
 
 import { calculateStableford } from '../../../src/scoring/stableford/stableford'
 import { Scorecard } from "../../../src/types";
-import { tapiolaGolf, tapiolaGolfFrontNine, tapiolaGolfBackNine, talmaPar3, belmont12holes, shiskine12holes } from '../../fixtures/courses';
+import { tapiolaGolf, talmaPar3, belmont12holes, shiskine12holes } from '../../fixtures/courses';
 import { StablefordScore } from '../../../src/scoring/stableford/types';
 
 
@@ -15,10 +15,11 @@ describe('Calculating Stableford points', () => {
     describe('for a 12-hole round', () => {
         describe('at a 12-hole course', () => {
 
-            describe('HCP 14.0 playing Shiskine Golf Course from white tees', () => {
+            describe(`HCP 14.0 playing Shiskine Golf Course from white tees`, () => {
                 const scorecard: Scorecard = {
                     course: shiskine12holes,
                     tee: 'white',
+                    gender: 'male',
                     date: "2024-05-05",
                     hcp: 14.0,
                     startingHole: 1,
@@ -61,7 +62,8 @@ describe('Calculating Stableford points', () => {
             describe('HCP 14.0 playing Belmont Golf Course from "green" tees', () => {
                 const scorecard: Scorecard = {
                     course: belmont12holes,
-                    tee: 'green',
+                    tee: 'Ross (Green)',
+                    gender: 'male',
                     date: "2024-02-02",
                     hcp: 14.0,
                     startingHole: 1,
@@ -106,6 +108,7 @@ describe('Calculating Stableford points', () => {
             const scorecard: Scorecard = {
                 course: talmaPar3,
                 tee: 'red',
+                gender: 'male',
                 date: "2024-06-06",
                 hcp: 10.0,
                 startingHole: 1,
@@ -129,6 +132,7 @@ describe('Calculating Stableford points', () => {
             const scorecard: Scorecard = {
                 course: tapiolaGolf,
                 tee: '52',
+                gender: 'male',
                 date: "2024-06-07",
                 hcp: 10.0,
                 startingHole: 1,
@@ -159,6 +163,7 @@ describe('Calculating Stableford points', () => {
                     const scorecard: Scorecard = {
                         course: talmaPar3,
                         tee: 'yellow',
+                        gender: 'male',
                         date: "2024-08-02",
                         hcp: 15.4,
                         startingHole: 1,
@@ -177,6 +182,7 @@ describe('Calculating Stableford points', () => {
                     const scorecard: Scorecard = {
                         course: talmaPar3,
                         tee: 'yellow',
+                        gender: 'male',
                         date: "2024-08-03",
                         hcp: 15.4,
                         startingHole: 1,
@@ -194,10 +200,11 @@ describe('Calculating Stableford points', () => {
 
             describe('with standard USGA/R&A logic', () => {
 
-                describe('15.8 HCP playing Tapiola Golf back nine from "46" tees on 8.7.2024', () => {
+                describe('15.8 HCP playing 44 strokes on Tapiola Golf back nine from "46" tees on 8.7.2024', () => {
                     const scorecard: Scorecard = {
-                        course: tapiolaGolfBackNine,
+                        course: tapiolaGolf,
                         tee: '46',
+                        gender: 'male',
                         date: "2024-07-08",
                         hcp: 15.8,
                         startingHole: 10,
@@ -219,10 +226,11 @@ describe('Calculating Stableford points', () => {
                     })
                 })
 
-                it('51.0 HCP playing Tapiola Golf back nine from "46" tees on 8.7.2024', () => {
+                it('51.0 HCP playing 58 strokes on Tapiola Golf back nine from "46" tees on 8.7.2024', () => {
                     const scorecard: Scorecard = {
-                        course: tapiolaGolfBackNine,
+                        course: tapiolaGolf,
                         tee: '46',
+                        gender: 'male',
                         date: "2024-07-09",
                         hcp: 51.0,
                         startingHole: 10,
@@ -234,10 +242,11 @@ describe('Calculating Stableford points', () => {
                     expect(scoring.points).toBe(20)
                 })
 
-                describe('15.8 HCP playing Tapiola Golf front nine from "52" tees on 29.7.2024', () => {
+                describe('15.8 HCP playing 48 strokes on Tapiola Golf front nine from "52" tees on 29.7.2024', () => {
                     const scorecard: Scorecard = {
-                        course: tapiolaGolfFrontNine,
+                        course: tapiolaGolf,
                         tee: '52',
+                        gender: 'male',
                         date: "2024-07-29",
                         hcp: 15.8,
                         startingHole: 1,
@@ -262,10 +271,11 @@ describe('Calculating Stableford points', () => {
 
             describe('with GolfGamebook logic', () => {
 
-                it('15.8 HCP playing Tapiola Golf back nine from "46" tees', () => {
+                it('15.8 HCP playing 44 strokes on Tapiola Golf back nine from "46" tees', () => {
                     const scorecard: Scorecard = {
                         course: tapiolaGolf,
                         tee: '46',
+                        gender: 'male',
                         date: "2024-07-10",
                         hcp: 15.8,
                         startingHole: 10,
@@ -277,10 +287,11 @@ describe('Calculating Stableford points', () => {
                     expect(scoring.points).toBe(15)
                 })
 
-                it('15.8 HCP playing Tapiola Golf front nine from "46" tees', () => {
+                it('15.8 HCP playing 36 strokes on Tapiola Golf front nine from "46" tees', () => {
                     const scorecard: Scorecard = {
                         course: tapiolaGolf,
                         tee: '46',
+                        gender: 'male',
                         date: "2024-07-11",
                         hcp: 15.8,
                         startingHole: 1,
@@ -292,10 +303,11 @@ describe('Calculating Stableford points', () => {
                     expect(scoring.points).toBe(22)
                 })
 
-                it('15.8 HCP playing Tapiola Golf front nine from "52" tees on 30.7.2024', () => {
+                it('15.8 HCP playing 48 strokes on Tapiola Golf front nine from "52" tees on 30.7.2024', () => {
                     const scorecard: Scorecard = {
                         course: tapiolaGolf,
                         tee: '52',
+                        gender: 'male',
                         date: "2024-07-30",
                         hcp: 15.8,
                         startingHole: 1,
@@ -312,7 +324,8 @@ describe('Calculating Stableford points', () => {
         describe('at a 12-hole course', () => {
             const scorecard: Scorecard = {
                 course: belmont12holes,
-                tee: 'green',
+                tee: 'Ross (Green)',
+                gender: 'male',
                 date: "2024-05-02",
                 hcp: 15.4,
                 startingHole: 1,
@@ -337,60 +350,68 @@ describe('Calculating Stableford points', () => {
 
         describe('at a 9-hole course', () => {
             describe('Golf Talma', () => {
-                describe('15.8 HCP playing Talma Par 3 twice from yellow tees', () => {
+                describe('15.6 HCP playing Talma Par 3 twice from yellow tees', () => {
                     const scorecard: Scorecard = {
                         course: talmaPar3,
                         tee: 'yellow',
-                        date: "2024-04-01",
+                        gender: 'male',
+                        date: "2024-01-01",
                         hcp: 15.6,
                         startingHole: 1,
                         strokes: [4, 3, 4, 4, 3, 3, 4, 5, 4, 3, 3, 4, 4, 4, 5, 3, 3, 5]
                     }
-                    const scoring = calculateStableford(scorecard)
+                    const methods = ['gamebook', 'standard'] as Array<'gamebook' | 'standard'>
+                    methods.forEach(method => {
+                        describe(`with ${method} logic`, () => {
+                            const scoring = calculateStableford(scorecard, { method: method })
+                            const routing = scoring.scorecard.course.tees.find(t => t.name === 'yellow')
 
-                    describe('the 9-hole course is extended to 18', () => {
+                            describe('the 9-hole course is extended to 18', () => {
 
-                        describe('holes are extended to 18', () => {
+                                describe('holes are extended to 18', () => {
 
-                            it('there are 18 holes instead of 9', () => {
-                                expect(scoring.scorecard.course.holes.length).toBe(18)
+                                    it('there are 18 holes instead of 9', () => {
+                                        expect(routing!.holes.length).toBe(18)
+                                    })
+
+                                    it('hole numbers run from 1-18', () => {
+                                        expect(routing!.holes.map(h => h.hole)).toStrictEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18])
+                                    })
+                                })
+
+                                describe('stroke indexes are allocated correctly between front and back nine', () => {
+                                    const indexes = routing!.holes.map(h => h.hcp)
+                                    const frontNineIndexes = indexes.slice(0, 9)
+                                    const backNineIndexes = indexes.slice(9, 18)
+
+                                    it('there are 18 unique stroke indexes', () => {
+                                        expect([...new Set(indexes)].length).toBe(18)
+                                    })
+
+                                    it('the front nine has odd HCP indexes from 1 to 17', () => {
+                                        expect(frontNineIndexes).toContainAllValues([1, 3, 5, 7, 9, 11, 13, 15, 17])
+                                    })
+
+                                    it('the back nine has even HCP indexes from 2 to 18', () => {
+                                        expect(backNineIndexes).toContainAllValues([2, 4, 6, 8, 10, 12, 14, 16, 18])
+                                    })
+                                })
                             })
 
-                            it('hole numbers run from 1-18', () => {
-                                expect(scoring.scorecard.course.holes.map(h => h.hole)).toStrictEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18])
-                            })
-                        })
+                            describe('scores are correct', () => {
+                                it('strokes are calculated for all 18 holes', () => {
+                                    expect(scoring.strokes).toBe(68)
+                                })
 
-                        describe('stroke indexes are allocated correctly between front and back nine', () => {
-                            const indexes = scoring.scorecard.course.holes.map(h => h.hcp)
-                            const frontNineIndexes = indexes.slice(0, 9)
-                            const backNineIndexes = indexes.slice(9, 18)
+                                it('the course handicap is calculated correctly', () => {
+                                    expect(scoring.phcp).toBe(9)
+                                })
 
-                            it('there are 18 unique stroke indexes', () => {
-                                expect([...new Set(indexes)].length).toBe(18)
-                            })
-
-                            it('the front nine has odd HCP indexes from 1 to 17', () => {
-                                expect(frontNineIndexes).toContainAllValues([1, 3, 5, 7, 9, 11, 13, 15, 17])
+                                it('Stableford points are calculated correctly', () => {
+                                    expect(scoring.points).toBe(31)
+                                })
                             })
 
-                            it('the back nine has even HCP indexes from 2 to 18', () => {
-                                expect(backNineIndexes).toContainAllValues([2, 4, 6, 8, 10, 12, 14, 16, 18])
-                            })
-                        })
-                    })
-
-                    describe('scores are correct', () => {
-                        it('strokes are calculated for all 18 holes', () => {
-                            expect(scoring.strokes).toBe(68)
-                        })
-
-                        it('the course handicap is calculated correctly', () => {
-                            expect(scoring.phcp).toBe(9)
-                        })
-
-                        it('Stableford points are calculated correctly', () => {
-                            expect(scoring.points).toBe(31)
                         })
                     })
                 })
@@ -404,6 +425,7 @@ describe('Calculating Stableford points', () => {
                     const scorecard: Scorecard = {
                         course: tapiolaGolf,
                         tee: '57',
+                        gender: 'male',
                         date: "2024-07-31",
                         hcp: 15.7,
                         startingHole: 1,
@@ -418,6 +440,7 @@ describe('Calculating Stableford points', () => {
                     const scorecard: Scorecard = {
                         course: tapiolaGolf,
                         tee: '57',
+                        gender: 'male',
                         date: "2024-07-04",
                         hcp: 16.3,
                         startingHole: 1,
@@ -432,6 +455,7 @@ describe('Calculating Stableford points', () => {
                     const scorecard: Scorecard = {
                         course: tapiolaGolf,
                         tee: '57',
+                        gender: 'male',
                         date: "2024-06-15",
                         hcp: 15.3,
                         startingHole: 1,
@@ -446,6 +470,7 @@ describe('Calculating Stableford points', () => {
                     const scorecard: Scorecard = {
                         course: tapiolaGolf,
                         tee: '46',
+                        gender: 'male',
                         date: "2024-05-19",
                         hcp: 51.9,
                         startingHole: 1,
@@ -461,7 +486,8 @@ describe('Calculating Stableford points', () => {
         describe('at a 12-hole course', () => {
             const scorecard: Scorecard = {
                 course: belmont12holes,
-                tee: 'black',
+                tee: 'Tillinghast (Black)',
+                gender: 'male',
                 date: "2024-05-03",
                 hcp: 15.4,
                 startingHole: 1,
@@ -483,6 +509,40 @@ describe('Calculating Stableford points', () => {
 
     })
 
-    // TODO: What if the scorecard has 18 hole scores, the course has 18 holes, but the starting hole is 10?
 
+    describe('unsupported scorecards', () => {
+
+        describe('playing 13 holes on an 18-hole course', () => {
+            const scorecard: Scorecard = {
+                course: talmaPar3,
+                tee: 'yellow',
+                gender: 'male',
+                date: "2023-01-01",
+                hcp: 19.1,
+                startingHole: 1,
+                strokes: [4, 3, 4, 4, 3, 3, 4, 5, 4, 3, 3, 4, 4, 4, 5, 3, 3, 5].slice(0, 13)
+            }
+
+            it('yields an error with standard logic', () => expect(() => calculateStableford(scorecard, { method: 'standard' })).toThrow())
+            it('yields an error with gamebook logic', () => expect(() => calculateStableford(scorecard, { method: 'gamebook' })).toThrow())
+        })
+
+        describe('playing 16 holes on an 12-hole course', () => {
+            const scorecard: Scorecard = {
+                course: belmont12holes,
+                tee: 'yellow',
+                gender: 'male',
+                date: "2023-01-01",
+                hcp: 19.1,
+                startingHole: 1,
+                strokes: [4, 3, 4, 4, 3, 3, 4, 5, 4, 3, 3, 4, 4, 4, 5, 3, 3, 5].slice(0, 16)
+            }
+
+            it('yields an error with standard logic', () => expect(() => calculateStableford(scorecard, { method: 'standard' })).toThrow())
+            it('yields an error with gamebook logic', () => expect(() => calculateStableford(scorecard, { method: 'gamebook' })).toThrow())
+        })
+    })
+
+
+    // TODO: What if the scorecard has 18 hole scores, the course has 18 holes, but the starting hole is 10?
 })
