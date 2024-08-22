@@ -16,20 +16,21 @@ describe('Calculating Strokeplay score', () => {
     describe('for a 12-hole round', () => {
         describe('at a 12-hole course', () => {
 
-            describe(`HCP 14.0 playing Shiskine Golf Course from white tees`, () => {
-                const scorecard: Scorecard = {
-                    course: shiskine12holes,
-                    tee: 'white',
-                    gender: 'male',
-                    date: "2024-05-05",
-                    hcp: 14.0,
-                    startingHole: 1,
-                    strokes: [4, 4, 5, 5, 4, 3, 5, 5, 5, 4, 4, 5]
-                }
+            forEachScoringMethod(method => {
+                describe(`with ${method} logic`, () => {
 
-                forEachScoringMethod(method => {
-                    describe(`with ${method} logic`, () => {
-                        const scoring = calculateStrokeplay(scorecard, { method: method })
+                    describe(`HCP 14.0 playing Shiskine Golf Course from white tees`, () => {
+                        const scorecard: Scorecard = {
+                            course: shiskine12holes,
+                            tee: 'white',
+                            gender: 'male',
+                            date: "2024-05-05",
+                            hcp: 14.0,
+                            startingHole: 1,
+                            strokes: [4, 4, 5, 5, 4, 3, 5, 5, 5, 4, 4, 5]
+                        }
+
+                        const scoring = calculateStrokeplay(scorecard, { method })
 
                         it('strokes are calculated for all 12 holes', () => {
                             expect(scoring.strokes).toBe(53)
@@ -44,33 +45,29 @@ describe('Calculating Strokeplay score', () => {
                             expect(scoring.relativeToPar).toBe(4)
                         })
                     })
-                })
-            })
 
-            describe('HCP 14.0 playing Belmont Golf Course from "green" tees', () => {
-                const scorecard: Scorecard = {
-                    course: belmont12holes,
-                    tee: 'Ross (Green)',
-                    gender: 'male',
-                    date: "2024-02-02",
-                    hcp: 14.0,
-                    startingHole: 1,
-                    strokes: [4, 4, 5, 5, 4, 3, 5, 5, 5, 4, 4, 5]
-                }
+                    describe('HCP 14.0 playing Belmont Golf Course from "green" tees', () => {
+                        const scorecard: Scorecard = {
+                            course: belmont12holes,
+                            tee: 'Ross (Green)',
+                            gender: 'male',
+                            date: "2024-02-02",
+                            hcp: 14.0,
+                            startingHole: 1,
+                            strokes: [4, 4, 5, 5, 4, 3, 5, 5, 5, 4, 4, 5]
+                        }
 
-                forEachScoringMethod(method => {
-                    describe(`with ${method} logic`, () => {
                         const scoring = (): StrokeplayScore => calculateStrokeplay(scorecard, { method })
 
-                        it('strokes are calculated for all 12 holes [standard]', () => {
-                            expect(scoring().strokes).toBe(53)
-                        })
-
-                        it('the course handicap is calculated correctly [standard]', () => {
+                        it('the course handicap is calculated correctly', () => {
                             expect(scoring().phcp).toBe(11)
                         })
 
-                        it('Net strokes are calculated correctly [standard]', () => {
+                        it('strokes are calculated for all 12 holes', () => {
+                            expect(scoring().strokes).toBe(53)
+                        })
+
+                        it('Net strokes are calculated correctly', () => {
                             expect(scoring().score).toBe(42)
                             expect(scoring().relativeToPar).toBe(-6)
                         })
@@ -411,6 +408,82 @@ describe('Calculating Strokeplay score', () => {
                     expect(scoring.phcp).toBe(32)
                     expect(scoring.score).toBe(90)
                     expect(scoring.relativeToPar).toBe(+18)
+                })
+            })
+        })
+    })
+
+    describe('with missing scores', () => {
+        forEachScoringMethod(method => {
+            describe(`with ${method} logic`, () => {
+
+                describe('missing a hole in the middle', () => {
+                    const scorecard: Scorecard = {
+                        course: belmont12holes,
+                        tee: 'Ross (Green)',
+                        gender: 'male',
+                        date: "2024-02-02",
+                        hcp: 14.0,
+                        startingHole: 1,
+                        strokes: [4, 4, 5, 5, 4, 3, 0, 5, 5, 4, 4, 5]
+                    }
+
+                    const scoring = (): StrokeplayScore => calculateStrokeplay(scorecard, { method })
+
+                    it('strokes are calculated for all holes played', () => {
+                        expect(scoring().strokes).toBe(48)
+                    })
+
+                    it('yields a stroke play score of 0', () => {
+                        expect(scoring().score).toBe(0)
+                        expect(scoring().relativeToPar).toBe(0)
+                    })
+                })
+
+                describe('missing holes in the beginning', () => {
+                    const scorecard: Scorecard = {
+                        course: belmont12holes,
+                        tee: 'Ross (Green)',
+                        gender: 'male',
+                        date: "2024-02-02",
+                        hcp: 14.0,
+                        startingHole: 1,
+                        strokes: [0, 0, 4, 5, 5, 4, 3, 5, 5, 4, 4, 5]
+                    }
+
+                    const scoring = (): StrokeplayScore => calculateStrokeplay(scorecard, { method })
+
+                    it('strokes are calculated for all holes played', () => {
+                        expect(scoring().strokes).toBe(44)
+                    })
+
+                    it('yields a stroke play score of 0', () => {
+                        expect(scoring().score).toBe(0)
+                        expect(scoring().relativeToPar).toBe(0)
+                    })
+                })
+
+                describe('missing holes from the end', () => {
+                    const scorecard: Scorecard = {
+                        course: belmont12holes,
+                        tee: 'Ross (Green)',
+                        gender: 'male',
+                        date: "2024-02-02",
+                        hcp: 14.0,
+                        startingHole: 1,
+                        strokes: [4, 5, 5, 4, 3, 5, 5, 4, 4, 5, 0, 0]
+                    }
+
+                    const scoring = (): StrokeplayScore => calculateStrokeplay(scorecard, { method })
+
+                    it('strokes are calculated for all holes played', () => {
+                        expect(scoring().strokes).toBe(44)
+                    })
+
+                    it('yields a stroke play score of 0', () => {
+                        expect(scoring().score).toBe(0)
+                        expect(scoring().relativeToPar).toBe(0)
+                    })
                 })
             })
         })

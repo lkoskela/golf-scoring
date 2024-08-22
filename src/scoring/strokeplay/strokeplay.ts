@@ -57,7 +57,7 @@ const calculateStrokeplayScore = (scorecard: Scorecard, options: CalculateStroke
     log.log(`Strokeplay score for ${scorecard.course.name} (${scorecard.tee}) on ${scorecard.date} with playing handicap ${phcp}:`)
     const strokes = scorecard.strokes.reduce((acc, s) => acc + s, 0)
     const [score, effectivePlayingHandicap] = calculateNetStrokesAndEffectivePlayingHandicap(scorecard, options, adjustedPars)
-    const relativeToPar = score - coursePar
+    const relativeToPar = score > 0 ? score - coursePar : 0
 
     log.flush()
     return { score, relativeToPar, strokes, phcp: effectivePlayingHandicap, scorecard }
@@ -67,17 +67,25 @@ const calculateNetStrokesAndEffectivePlayingHandicap = (scorecard: Scorecard, op
     const log = debug(scorecard, options)
     const tee = routing(scorecard)
     let effectivePlayingHandicap = 0
-    const netstrokes = scorecard.strokes.map((strokes, index) => {
+    let netstrokes = 0
+    let missingStrokes = false
+    for (let index=0; index < scorecard.strokes.length; index++) {
+        const strokes = scorecard.strokes[index]
         const i = scorecard.startingHole < tee.holes.length ? index + (scorecard.startingHole - 1) : index
         const adjustedPar = adjustedPars[index]
         const strokesAllocated = adjustedPar - tee.holes[i].par
-        effectivePlayingHandicap += strokesAllocated
-        const netstrokesForHole = strokes - strokesAllocated
         const adjustmentSymbol = strokesAllocated > 0 ? '+' : strokesAllocated < 0 ? '-' : ''
         const adjustedParIndicator = adjustmentSymbol.repeat(Math.abs(strokesAllocated))
-        log.log(`#${(i+1).toString().padEnd(2)}\thcp=${tee.holes[i].hcp.toString().padEnd(2)}\tpar=${tee.holes[i].par}${adjustedParIndicator}\t=> ${adjustedPar}\tstrokes=${strokes}\tnet=${netstrokesForHole}`)
-        return netstrokesForHole
-    }).reduce((acc, p) => acc + p, 0);
+        effectivePlayingHandicap += strokesAllocated
+        if (strokes === 0) {
+            missingStrokes = true
+            log.log(`#${(i+1).toString().padEnd(2)}\thcp=${tee.holes[i].hcp.toString().padEnd(2)}\tpar=${tee.holes[i].par}${adjustedParIndicator}\t=> ${adjustedPar}\tstrokes=<MISSING>\tnet=<N/A>`)
+        } else {
+            const netstrokesForHole = strokes - strokesAllocated
+            log.log(`#${(i+1).toString().padEnd(2)}\thcp=${tee.holes[i].hcp.toString().padEnd(2)}\tpar=${tee.holes[i].par}${adjustedParIndicator}\t=> ${adjustedPar}\tstrokes=${strokes}\tnet=${netstrokesForHole}`)
+            netstrokes += netstrokesForHole
+        }
+    }
     log.flush()
-    return [netstrokes, effectivePlayingHandicap]
+    return [missingStrokes ? 0 : netstrokes, effectivePlayingHandicap]
 }
