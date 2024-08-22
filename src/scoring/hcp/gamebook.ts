@@ -2,7 +2,7 @@ import { playingHandicap } from '../../handicap/handicap'
 import { HoleRating, Scorecard } from '../../types'
 import { routing } from '../../utils/scorecard'
 import { debug } from '../../utils/debug'
-import { CalculateStablefordOptions } from './types'
+import { CalculateStablefordOptions } from '../stableford/types'
 
 
 const resolveSlopeAndCourseRating = (scorecard: Scorecard): { slope: number, cr: number } => {

@@ -71,3 +71,26 @@ export type Scorecard = {
 //     startingHole: number,      // starting hole for the round (either 1 or 10)
 //     strokes: Array<number>,    // scores for each hole played
 // }
+
+
+export type CommonScoringOptions = {
+    method?: 'standard'|'gamebook',
+
+    // The handicap allowance. Default is 1.0 (100%).
+    hcpAllowance?: number,
+}
+
+export type CommonScore = {
+    // The player's playing handicap for the course
+    phcp: number,
+
+    // The total number of strokes taken
+    strokes: number,
+
+    // The number of Stableford points scored
+    score: number,
+
+    // The scorecard used to calculate the points (including adjustments
+    // to e.g. extend a 9-hole course to 18 holes)
+    scorecard: Scorecard,
+}

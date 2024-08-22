@@ -1,6 +1,6 @@
 import { HoleRating, Scorecard } from '../../types'
 import { playingHandicap } from '../../handicap/handicap'
-import { CalculateStablefordOptions } from './types'
+import { CalculateStablefordOptions } from '../stableford/types'
 import { routing } from '../../utils/scorecard'
 import { calculatePar } from '../../utils/course'
 import { debug } from '../../utils/debug'
