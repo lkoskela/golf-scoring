@@ -4,7 +4,7 @@
   "description": "Golf-related scoring calculations",
   "devDependencies": {
     "@babel/preset-typescript": "^7.16.0",
-    "@types/jest": "^29.2.6",
+    "@types/jest": "^29.5.13",
     "@types/luxon": "^3.4.2",
     "@types/node": "^22.5.2",
     "jest": "^29.4.0",
