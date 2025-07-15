@@ -4,6 +4,7 @@ import { calculateStableford } from '../../../src/scoring/stableford/stableford'
 import { Scorecard } from "../../../src/types";
 import { tapiolaGolf, talmaPar3, belmont12holes, shiskine12holes } from '../../fixtures/courses';
 import { StablefordScore } from '../../../src/scoring/stableford/types';
+import { numericallyAscending } from '../../utils/sorting'
 
 const forEachScoringMethod = (callback: (method: 'standard' | 'gamebook') => void) => {
     const methods = ['standard', 'gamebook'] as Array<'standard' | 'gamebook'>
@@ -324,11 +325,11 @@ describe('Calculating Stableford points', () => {
                                     })
 
                                     it('the front nine has odd HCP indexes from 1 to 17', () => {
-                                        expect(frontNineIndexes).toContainAllValues([1, 3, 5, 7, 9, 11, 13, 15, 17])
+                                        expect(frontNineIndexes.sort(numericallyAscending)).toStrictEqual([1, 3, 5, 7, 9, 11, 13, 15, 17])
                                     })
 
                                     it('the back nine has even HCP indexes from 2 to 18', () => {
-                                        expect(backNineIndexes).toContainAllValues([2, 4, 6, 8, 10, 12, 14, 16, 18])
+                                        expect(backNineIndexes.sort(numericallyAscending)).toStrictEqual([2, 4, 6, 8, 10, 12, 14, 16, 18])
                                     })
                                 })
                             })
