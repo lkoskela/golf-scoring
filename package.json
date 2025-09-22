@@ -5,7 +5,7 @@
   "devDependencies": {
     "@babel/preset-typescript": "^7.27.1",
     "@types/jest": "^30.0.0",
-    "@types/luxon": "^3.6.2",
+    "@types/luxon": "^3.7.1",
     "@types/node": "^24.0.13",
     "jest": "^30.0.4",
     "jest-extended": "^6.0.0",
@@ -64,6 +64,6 @@
   },
   "homepage": "https://github.com/lkoskela/golf-scoring#readme",
   "dependencies": {
-    "luxon": "^3.7.1"
+    "luxon": "^3.7.2"
   }
 }
